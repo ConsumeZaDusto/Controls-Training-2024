@@ -4,6 +4,8 @@ import edu.wpi.first.math.filter.MedianFilter;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 // Imports go here
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants;
+import frc.robot.subsystems.NoteHandling.Intake.IntakeStates;
 
 import static frc.robot.Constants.GeneralRollerConstants.*;
 import static frc.robot.Constants.*;
@@ -44,6 +46,9 @@ public class GeneralRoller extends SubsystemBase {
     StateReverse,
     StateForwardFast,
   }
+
+  public static GeneralRollerStates henry = GeneralRollerStates.StateOff;
+  public static GeneralRollerStates dylan = GeneralRollerStates.StateOff;
   
   public LinearFilter filter = LinearFilter.singlePoleIIR(0.5, 0.2);
 
@@ -51,41 +56,53 @@ public class GeneralRoller extends SubsystemBase {
   private final CANSparkMax m_spark;
 
   // Hint: motors need a voltage! You'll still need to set the motor's voltage yourself, though.
-  private double desiredVoltage = 0;
+  private double desiredVoltage = 5;
 
   public GeneralRoller(int port, boolean setInverted) {
     m_spark = new CANSparkMax(port, MotorType.kBrushless);
-
-
     // You have been given the CANSparkMax here, which is representative of the motor driving this shaft, 
     // you still need to confige it! Look at the docs and the provided arguments to this subsystem, and determine what those configs should be.
-
-
+    m_spark.setInverted(setInverted);
+    m_spark.setIdleMode(IdleMode.kCoast);
+    m_spark.enableVoltageCompensation(kNominalVoltage);
+    m_spark.setSmartCurrentLimit(kGeneralRollerCurrentLimit);
   }
 
   @Override
   public void periodic() {
     //This function runs ~20 times per second. It is in every subsytem, and is effectively your "while" loop or "update" loop.
     //Thus, the usage of while(true) and similar loops is generally avoided--- they can cause memory-leaks and other jank! Instead, put looping code here. 
+    switch (henry) {
+      case StateOff:
+        m_spark.setVoltage(0);
+        break;
+      case StateForward:
+        m_spark.setVoltage(5);
+        break;
+      case StateReverse:
+        m_spark.setVoltage(-5);
+        break;
+      case StateForwardFast:
+        m_spark.setVoltage(10);
+        break;
+    }
+    
+    henry = dylan;
   }
 
   public double getCurrent() {
     //hint: this method wants you to return the Amperage (Current, or A) to the motor. the LinearFilter is useful here.
-
-    return 1.0; //replace 1.0 with your return value
+    return filter.calculate(m_spark.getOutputCurrent());
   }
 
-
-  
-  
   public void requestState(GeneralRollerStates desiredState) {
     // hint: this method is called with a GeneralRollerState when the state is to be changed.
-    
+    dylan = desiredState;
   }
  
   
   public GeneralRollerStates getCurrentState() { 
-    return GeneralRollerStates.StateForward; //You should change this!
+    return henry; //You should change this!
     
   }
 
